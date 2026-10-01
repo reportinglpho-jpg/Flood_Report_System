@@ -246,9 +246,14 @@
 
             <!-- Manage Admins -->
             <div class="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-6 border-t-4 border-red-500">
-                <h3 class="text-lg font-bold mb-5 flex items-center text-gray-800">
-                    <i class="fa-solid fa-users-gear text-red-500 mr-2 bg-red-50 p-2 rounded-md"></i> จัดการแอดมินระบบ
-                </h3>
+                <div class="flex justify-between items-center mb-5">
+                    <h3 class="text-lg font-bold flex items-center text-gray-800">
+                        <i class="fa-solid fa-users-gear text-red-500 mr-2 bg-red-50 p-2 rounded-md"></i> จัดการแอดมินระบบ
+                    </h3>
+                    <button onclick="addAdmin()" class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-3 py-2 rounded-lg shadow transition flex items-center">
+                        <i class="fa-solid fa-user-plus mr-1"></i> เพิ่มแอดมิน
+                    </button>
+                </div>
                 <div class="overflow-x-auto rounded-xl border border-gray-100 custom-scrollbar">
                     <table class="w-full text-left text-sm whitespace-nowrap">
                         <thead class="bg-gray-50 text-gray-600">
@@ -268,7 +273,7 @@
     <!-- Script -->
     <script>
         // ==========================================
-        // ตั้งค่า API (แก้ไขข้อมูลของคุณตรงนี้)
+        // ตั้งค่า API
         // ==========================================
         const firebaseConfig = {
           apiKey: "AIzaSyC1Qtu8xf7oehCCH3Zc-uM-fhEqSfKylnU",
@@ -282,43 +287,61 @@
         
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
-        const recordsRef = database.ref('reports'); // ชื่อ Table ข้อมูล
+        const recordsRef = database.ref('reports'); // โหนดรายงานข้อมูล
+        const settingsRef = database.ref('settings'); // โหนดตั้งค่าระบบ
 
         const GOOGLE_SHEET_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzs-X3Z2owqYKB4x9kBX_C1Sx8ywy6VWnFl4hfhaz154vc4qSY5OXdMVr0H95j1mcHk/exec';
         // ==========================================
 
-        let db = {
+        const defaultSettings = {
             stores: ['สาขาสยาม', 'สาขาเซ็นทรัลเวิลด์', 'สาขาลาดพร้าว'],
             statuses: ['ปกติ', 'เฝ้าระวัง', 'ฉุกเฉินระดับ 1'],
             waterStatus: ['ต่ำกว่าตลิ่ง', 'สูงกว่าตลิ่ง'],
             roadStatus: ['ต่ำกว่าถนน', 'สูงกว่าถนน'],
             floorStatus: ['ต่ำกว่าพื้นศูนย์ฯ', 'สูงกว่าพื้นศูนย์ฯ'],
-            records: [
-                { 
-                    id: 1, date: '01/10/2569 09:30', store: 'สาขาสยาม', status: 'ปกติ', 
-                    waterSource: 'คลองแสนแสบ', waterLevelStatus: 'ต่ำกว่าตลิ่ง', waterLevelCM: '50 cm',
-                    roadLevelStatus: 'ต่ำกว่าถนน', roadLevelCM: '30 cm', floorLevelStatus: 'ต่ำกว่าพื้นศูนย์ฯ', floorLevelCM: '100 cm',
-                    details: 'เปิดทำการปกติ ไม่มีเหตุการณ์ผิดปกติ' 
-                }
-            ],
-            admins: [{ user: 'admin', pass: '20033457', name: 'สมชาย รักดี', empId: 'EMP001', phone: '0812345678', position: 'System Admin' }],
+            admins: [{ user: 'admin', pass: '20033457', name: 'สมชาย รักดี', empId: 'EMP001', phone: '0812345678', position: 'System Admin' }]
+        };
+
+        let db = {
+            stores: [...defaultSettings.stores],
+            statuses: [...defaultSettings.statuses],
+            waterStatus: [...defaultSettings.waterStatus],
+            roadStatus: [...defaultSettings.roadStatus],
+            floorStatus: [...defaultSettings.floorStatus],
+            records: [],
+            admins: [...defaultSettings.admins],
             isLoggedIn: false, currentUser: null, currentViewBranch: null
         };
 
         window.onload = () => {
             populateCMDropdowns();
-            updateDropdowns();
-            renderSettingsLists();
-            
-            // ดึงข้อมูลจาก Firebase แบบ Realtime มาอัปเดตใส่ตารางประวัติ
+
+            // 1. ดึงและติดตามข้อมูล Settings จาก Firebase Realtime
+            settingsRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    db.stores = data.stores || [...defaultSettings.stores];
+                    db.statuses = data.statuses || [...defaultSettings.statuses];
+                    db.waterStatus = data.waterStatus || [...defaultSettings.waterStatus];
+                    db.roadStatus = data.roadStatus || [...defaultSettings.roadStatus];
+                    db.floorStatus = data.floorStatus || [...defaultSettings.floorStatus];
+                    db.admins = data.admins || [...defaultSettings.admins];
+                } else {
+                    // หากฐานข้อมูลสแตนบายเพิ่งสร้างใหม่ ให้สร้างข้อมูลเริ่มต้นบน Firebase
+                    settingsRef.set(defaultSettings);
+                }
+                updateDropdowns();
+                renderSettingsLists();
+            });
+
+            // 2. ดึงและติดตามข้อมูล Reports จาก Firebase Realtime
             recordsRef.on('value', (snapshot) => {
                 const data = snapshot.val();
-                db.records = []; // เคลียร์ของเก่าออก
+                db.records = []; 
                 if(data) {
                     Object.keys(data).forEach(key => {
                         db.records.push({ id: key, ...data[key] });
                     });
-                    // เรียงจากใหม่ไปเก่า
                     db.records.sort((a, b) => b.timestamp - a.timestamp); 
                 }
                 renderHistory();
@@ -328,6 +351,24 @@
                 }
             });
         };
+
+        // บันทึกและซิงค์ข้อมูล Settings ขึ้นทั้ง Firebase และ Google Sheets
+        function saveSettingsToFirebaseAndSheets(type) {
+            // บันทึกลง Firebase
+            settingsRef.child(type).set(db[type]).catch(err => console.error("Firebase Settings Error:", err));
+
+            // บันทึกลง Google Sheets
+            fetch(GOOGLE_SHEET_WEBAPP_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({
+                    action: 'update_settings',
+                    type: type,
+                    data: db[type]
+                })
+            }).catch(err => console.error("Sheets Settings Backup Error:", err));
+        }
 
         function switchTab(tabId) {
             if (tabId !== 'settings' && db.isLoggedIn) { db.isLoggedIn = false; db.currentUser = null; }
@@ -372,13 +413,13 @@
         function submitData(e) {
             e.preventDefault();
             
-            // เปลี่ยนปุ่มเป็นสถานะกำลังโหลด
             const submitBtn = e.target.querySelector('button[type="submit"]');
             const originalBtnHTML = submitBtn.innerHTML;
             submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> กำลังบันทึก...';
             submitBtn.disabled = true;
 
             const record = {
+                action: 'add_report',
                 timestamp: Date.now(),
                 date: new Date().toLocaleString('th-TH', {year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'}),
                 store: document.getElementById('selStore').value,
@@ -397,15 +438,14 @@
             const newRecordRef = recordsRef.push();
             newRecordRef.set(record).then(() => {
                 
-                // 2. ส่ง Backup เข้า Google Sheets (ทำงานอยู่เบื้องหลัง)
+                // 2. ส่ง Backup เข้า Google Sheets
                 fetch(GOOGLE_SHEET_WEBAPP_URL, {
                     method: 'POST',
-                    mode: 'no-cors', // <-- เพิ่มบรรทัดนี้
+                    mode: 'no-cors',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify(record)
                 }).catch(err => console.error("Sheets Backup Error:", err));
 
-                // เคลียร์ฟอร์มและแจ้งเตือน
                 Swal.fire({icon: 'success', title: 'บันทึกสำเร็จ', text: 'ข้อมูลถูกส่งเข้าระบบและสำรองเรียบร้อยแล้ว'}).then(() => { 
                     document.getElementById('entryForm').reset(); 
                     submitBtn.innerHTML = originalBtnHTML;
@@ -467,7 +507,7 @@
         }
 
         function viewDetails(id) {
-            const r = db.records.find(x => x.id === id || x.id == id); // รองรับทั้ง string (firebase key) และ number
+            const r = db.records.find(x => x.id === id || x.id == id);
             if(r) Swal.fire({ title: 'รายละเอียดข้อมูล', html: buildDetailCardHTML(r), showCloseButton: true, width: '700px', showConfirmButton: false });
         }
 
@@ -521,7 +561,7 @@
         function downloadCSV(records, filename) {
             let csv = "data:text/csv;charset=utf-8,\uFEFFวันที่,สาขา,สถานะ,แหล่งน้ำ,ระดับน้ำ,ระดับถนน,ระดับพื้นฯ,รายละเอียด\n";
             records.forEach(r => {
-                csv += `"${r.date}","${r.store}","${r.status}","${r.waterSource}","${r.waterLevelStatus} ${r.waterLevelCM}","${r.roadLevelStatus} ${r.roadLevelCM}","${r.floorLevelStatus} ${r.floorLevelCM}","${r.details.replace(/"/g, '""')}"\n`;
+                csv += `"${r.date}","${r.store}","${r.status}","${r.waterSource}","${r.waterLevelStatus} ${r.waterLevelCM}","${r.roadLevelStatus} ${r.roadLevelCM}","${r.floorLevelStatus} ${r.floorLevelCM}","${(r.details || '').replace(/"/g, '""')}"\n`;
             });
             const link = document.createElement("a"); link.setAttribute("href", encodeURI(csv)); link.setAttribute("download", filename);
             document.body.appendChild(link); link.click(); document.body.removeChild(link);
@@ -567,13 +607,24 @@
 
         function addSetting(type, inputId) {
             const val = document.getElementById(inputId).value.trim();
-            if(val) { db[type].push(val); document.getElementById(inputId).value = ''; renderSettingsLists(); updateDropdowns(); }
+            if(val) { 
+                db[type].push(val); 
+                document.getElementById(inputId).value = ''; 
+                renderSettingsLists(); 
+                updateDropdowns(); 
+                saveSettingsToFirebaseAndSheets(type);
+            }
         }
 
         function deleteSetting(type, idx) { 
             Swal.fire({ title: 'ยืนยันการลบ?', icon: 'warning', showCancelButton: true, confirmButtonText: 'ลบ', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#d33' })
             .then((res) => {
-                if(res.isConfirmed) { db[type].splice(idx, 1); renderSettingsLists(); updateDropdowns(); }
+                if(res.isConfirmed) { 
+                    db[type].splice(idx, 1); 
+                    renderSettingsLists(); 
+                    updateDropdowns(); 
+                    saveSettingsToFirebaseAndSheets(type);
+                }
             });
         }
 
@@ -590,11 +641,53 @@
                     db[type][idx] = res.value.trim();
                     renderSettingsLists();
                     updateDropdowns();
+                    saveSettingsToFirebaseAndSheets(type);
                 }
             });
         }
 
         // Admin Management
+        function addAdmin() {
+            Swal.fire({
+                title: 'เพิ่มแอดมินใหม่',
+                html: `
+                    <div class="space-y-3 text-left">
+                        <div><label class="text-xs text-gray-500 font-semibold">Username</label><input id="swal-add-user" class="w-full border p-2 rounded mt-1" placeholder="admin2"></div>
+                        <div><label class="text-xs text-gray-500 font-semibold">Password</label><input id="swal-add-pass" type="password" class="w-full border p-2 rounded mt-1" placeholder="รหัสผ่าน"></div>
+                        <div><label class="text-xs text-gray-500 font-semibold">ชื่อ-สกุล</label><input id="swal-add-name" class="w-full border p-2 rounded mt-1" placeholder="ชื่อ-นามสกุล"></div>
+                        <div><label class="text-xs text-gray-500 font-semibold">รหัสพนักงาน</label><input id="swal-add-emp" class="w-full border p-2 rounded mt-1" placeholder="EMP002"></div>
+                        <div><label class="text-xs text-gray-500 font-semibold">เบอร์โทรศัพท์</label><input id="swal-add-phone" class="w-full border p-2 rounded mt-1" placeholder="08XXXXXXXX"></div>
+                        <div><label class="text-xs text-gray-500 font-semibold">ตำแหน่ง</label><input id="swal-add-pos" class="w-full border p-2 rounded mt-1" placeholder="ตำแหน่ง"></div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'เพิ่ม',
+                cancelButtonText: 'ยกเลิก',
+                preConfirm: () => {
+                    const user = document.getElementById('swal-add-user').value.trim();
+                    const pass = document.getElementById('swal-add-pass').value.trim();
+                    const name = document.getElementById('swal-add-name').value.trim();
+                    if(!user || !pass || !name) {
+                        Swal.showValidationMessage('กรุณากรอก Username, Password และชื่อ-สกุล');
+                        return false;
+                    }
+                    return {
+                        user: user, pass: pass, name: name,
+                        empId: document.getElementById('swal-add-emp').value.trim(),
+                        phone: document.getElementById('swal-add-phone').value.trim(),
+                        position: document.getElementById('swal-add-pos').value.trim()
+                    };
+                }
+            }).then(res => {
+                if(res.isConfirmed && res.value) {
+                    db.admins.push(res.value);
+                    renderSettingsLists();
+                    saveSettingsToFirebaseAndSheets('admins');
+                    Swal.fire('เพิ่มสำเร็จ', '', 'success');
+                }
+            });
+        }
+
         function viewAdmin(idx) {
             const a = db.admins[idx];
             Swal.fire({
@@ -645,6 +738,7 @@
                 if(res.isConfirmed) {
                     db.admins[idx] = { ...a, ...res.value };
                     renderSettingsLists();
+                    saveSettingsToFirebaseAndSheets('admins');
                     Swal.fire('บันทึกสำเร็จ', '', 'success');
                 }
             });
