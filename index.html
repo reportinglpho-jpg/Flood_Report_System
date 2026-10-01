@@ -278,6 +278,7 @@
                             <tr>
                                 <th class="p-3 font-semibold border-b">Username</th>
                                 <th class="p-3 font-semibold border-b">ชื่อ-สกุล</th>
+                                <th class="p-3 font-semibold border-b text-center">สิทธิ์การใช้งาน</th>
                                 <th class="p-3 font-semibold border-b text-center">จัดการ</th>
                             </tr>
                         </thead>
@@ -322,7 +323,7 @@
             waterStatus: ['ต่ำกว่าตลิ่ง', 'สูงกว่าตลิ่ง'],
             roadStatus: ['ต่ำกว่าถนน', 'สูงกว่าถนน'],
             floorStatus: ['ต่ำกว่าพื้นศูนย์ฯ', 'สูงกว่าพื้นศูนย์ฯ'],
-            admins: [{ user: 'admin', pass: '20033457', name: 'สมชาย รักดี', empId: 'EMP001', phone: '0812345678', position: 'System Admin' }]
+            admins: [{ user: 'admin', pass: '20033457', name: 'สมชาย รักดี', empId: 'EMP001', phone: '0812345678', position: 'System Admin', canEditHistory: true, canDeleteHistory: true }]
         };
 
         let db = {
@@ -567,9 +568,12 @@
                     <td class="p-3.5 text-cyan-700 text-xs font-medium">${r.waterLevelStatus} (${r.waterLevelCM})</td>
                     <td class="p-3.5 text-gray-700 text-xs font-medium">${r.roadLevelStatus} (${r.roadLevelCM})</td>
                     <td class="p-3.5 text-emerald-700 text-xs font-medium">${r.floorLevelStatus} (${r.floorLevelCM})</td>
-                    <td class="p-3.5 text-center pr-4">
-                        <button onclick="viewDetails('${r.id}')" class="text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-8 h-8 rounded-lg border border-blue-200 text-xs inline-flex items-center justify-center transition shadow-xs">
+                    <td class="p-3.5 text-center pr-4 space-x-1">
+                        <button onclick="viewDetails('${r.id}')" class="text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-8 h-8 rounded-lg border border-blue-200 text-xs inline-flex items-center justify-center transition shadow-xs" title="ดูรายละเอียด">
                             <i class="fa-solid fa-eye"></i>
+                        </button>
+                        <button onclick="editRecord('${r.id}')" class="text-amber-600 hover:bg-amber-50 hover:text-amber-700 w-8 h-8 rounded-lg border border-amber-200 text-xs inline-flex items-center justify-center transition shadow-xs" title="แก้ไขข้อมูลประวัติ">
+                            <i class="fa-solid fa-pen-to-square"></i>
                         </button>
                     </td>
                 </tr>
@@ -581,6 +585,9 @@
             return `
                 <div class="text-left bg-white p-5 rounded-xl border border-gray-200 shadow-sm mb-4 relative hover:shadow-md transition">
                     <div class="absolute top-4 right-4 flex items-center space-x-2">
+                        <button onclick="Swal.close(); editRecord('${r.id}')" class="text-amber-600 hover:bg-amber-50 p-1.5 rounded-lg border border-amber-200 text-xs flex items-center justify-center transition shadow-xs" title="แก้ไขข้อมูลประวัติ">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
                         <button onclick="confirmDeleteRecord('${r.id}')" class="text-red-500 hover:bg-red-50 p-1.5 rounded-lg border border-red-200 text-xs flex items-center justify-center transition shadow-xs" title="ลบข้อมูลประวัติ">
                             <i class="fa-solid fa-trash-can"></i>
                         </button>
@@ -610,8 +617,202 @@
             if(r) Swal.fire({ title: 'รายละเอียดข้อมูล', html: buildDetailCardHTML(r), showCloseButton: true, width: '700px', showConfirmButton: false });
         }
 
+        // ฟังก์ชันแก้ไขข้อมูลประวัติ
+        function editRecord(id) {
+            if (db.isLoggedIn && db.currentUser) {
+                if (db.currentUser.canEditHistory === false) {
+                    Swal.fire('ไม่มีสิทธิ์', 'คุณไม่มีสิทธิ์แก้ไขข้อมูลประวัติ', 'error');
+                    return;
+                }
+                openEditRecordModal(id);
+            } else {
+                Swal.fire({
+                    title: 'อนุมัติการแก้ไขข้อมูลประวัติ',
+                    text: 'กรุณากรอก Username และ Password แอดมินที่มีสิทธิ์แก้ไข',
+                    html: `
+                        <input id="swal-edit-user" class="swal2-input" placeholder="Username แอดมิน" style="width: 80%;">
+                        <div style="position: relative; width: 80%; margin: 1em auto;">
+                            <input id="swal-edit-pass" type="password" class="swal2-input" placeholder="Password แอดมิน" style="width: 100%; margin: 0; padding-right: 40px;">
+                            <button type="button" 
+                                onmousedown="const p = document.getElementById('swal-edit-pass'); const i = this.querySelector('i'); p.type='text'; i.classList.replace('fa-eye', 'fa-eye-slash');" 
+                                onmouseup="const p = document.getElementById('swal-edit-pass'); const i = this.querySelector('i'); p.type='password'; i.classList.replace('fa-eye-slash', 'fa-eye');" 
+                                onmouseleave="const p = document.getElementById('swal-edit-pass'); const i = this.querySelector('i'); p.type='password'; i.classList.replace('fa-eye-slash', 'fa-eye');" 
+                                ontouchstart="const p = document.getElementById('swal-edit-pass'); const i = this.querySelector('i'); p.type='text'; i.classList.replace('fa-eye', 'fa-eye-slash');" 
+                                ontouchend="const p = document.getElementById('swal-edit-pass'); const i = this.querySelector('i'); p.type='password'; i.classList.replace('fa-eye-slash', 'fa-eye');" 
+                                style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #6b7280; padding: 5px; outline: none;">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonText: 'ตกลง',
+                    cancelButtonText: 'ยกเลิก',
+                    confirmButtonColor: '#f59e0b',
+                    preConfirm: () => {
+                        const u = document.getElementById('swal-edit-user').value;
+                        const p = document.getElementById('swal-edit-pass').value;
+                        const admin = db.admins.find(x => x.user === u && x.pass === p);
+                        if (!admin) {
+                            Swal.showValidationMessage('Username หรือ Password แอดมินไม่ถูกต้อง!');
+                            return false;
+                        }
+                        if (admin.canEditHistory === false) {
+                            Swal.showValidationMessage('แอดมินท่านนี้ไม่มีสิทธิ์แก้ไขประวัติ!');
+                            return false;
+                        }
+                        return admin;
+                    }
+                }).then((res) => {
+                    if (res.isConfirmed) {
+                        openEditRecordModal(id);
+                    }
+                });
+            }
+        }
+
+        // เปิดหน้าต่าง Modal ฟอร์มแก้ไขข้อมูลประวัติ
+        function openEditRecordModal(id) {
+            const r = db.records.find(x => x.id === id || x.id == id);
+            if (!r) return;
+
+            const createOptions = (arr, selectedVal) => arr.map(item => `<option value="${item}" ${item === selectedVal ? 'selected' : ''}>${item}</option>`).join('');
+            
+            const buildCmOptions = (selectedVal) => {
+                let opts = '<option value="">-- เลือกระดับ --</option>';
+                for(let i=1; i<=500; i++) {
+                    const val = `${i} cm`;
+                    opts += `<option value="${val}" ${val === selectedVal ? 'selected' : ''}>${val}</option>`;
+                }
+                return opts;
+            };
+
+            Swal.fire({
+                title: 'แก้ไขข้อมูลประวัติ',
+                width: '750px',
+                html: `
+                    <div class="text-left space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar text-sm">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">สาขา (Store)</label>
+                                <select id="edit-store" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500">
+                                    ${createOptions(db.stores, r.store)}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">สถานะ (Status)</label>
+                                <select id="edit-status" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500">
+                                    ${createOptions(db.statuses, r.status)}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">แหล่งน้ำเฝ้าระวัง</label>
+                            <input type="text" id="edit-waterSource" value="${r.waterSource || ''}" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">ระดับน้ำ</label>
+                            <div class="flex gap-2">
+                                <select id="edit-waterLevelStatus" class="w-1/2 bg-gray-50 border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500">
+                                    ${createOptions(db.waterStatus, r.waterLevelStatus)}
+                                </select>
+                                <select id="edit-waterLevelCM" class="w-1/2 bg-gray-50 border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500">
+                                    ${buildCmOptions(r.waterLevelCM)}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">ระดับถนน</label>
+                            <div class="flex gap-2">
+                                <select id="edit-roadLevelStatus" class="w-1/2 bg-gray-50 border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500">
+                                    ${createOptions(db.roadStatus, r.roadLevelStatus)}
+                                </select>
+                                <select id="edit-roadLevelCM" class="w-1/2 bg-gray-50 border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500">
+                                    ${buildCmOptions(r.roadLevelCM)}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">ระดับชั้นเสมอพื้นของศูนย์การค้า</label>
+                            <div class="flex gap-2">
+                                <select id="edit-floorLevelStatus" class="w-1/2 bg-gray-50 border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500">
+                                    ${createOptions(db.floorStatus, r.floorLevelStatus)}
+                                </select>
+                                <select id="edit-floorLevelCM" class="w-1/2 bg-gray-50 border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500">
+                                    ${buildCmOptions(r.floorLevelCM)}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">รายละเอียดสถานการณ์</label>
+                            <textarea id="edit-details" rows="4" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 custom-scrollbar">${r.details || ''}</textarea>
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'บันทึกการแก้ไข',
+                cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#2563eb',
+                preConfirm: () => {
+                    const updatedData = {
+                        store: document.getElementById('edit-store').value,
+                        status: document.getElementById('edit-status').value,
+                        waterSource: document.getElementById('edit-waterSource').value.trim(),
+                        waterLevelStatus: document.getElementById('edit-waterLevelStatus').value,
+                        waterLevelCM: document.getElementById('edit-waterLevelCM').value,
+                        roadLevelStatus: document.getElementById('edit-roadLevelStatus').value,
+                        roadLevelCM: document.getElementById('edit-roadLevelCM').value,
+                        floorLevelStatus: document.getElementById('edit-floorLevelStatus').value,
+                        floorLevelCM: document.getElementById('edit-floorLevelCM').value,
+                        details: document.getElementById('edit-details').value.trim()
+                    };
+
+                    if (!updatedData.store || !updatedData.status || !updatedData.waterSource) {
+                        Swal.showValidationMessage('กรุณากรอกข้อมูลสำคัญให้ครบถ้วน (สาขา, สถานะ, แหล่งน้ำ)');
+                        return false;
+                    }
+                    return updatedData;
+                }
+            }).then((res) => {
+                if (res.isConfirmed && res.value) {
+                    recordsRef.child(id).update(res.value).then(() => {
+                        fetch(GOOGLE_SHEET_WEBAPP_URL, {
+                            method: 'POST',
+                            mode: 'no-cors',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify({
+                                action: 'edit_report',
+                                id: id,
+                                ...res.value
+                            })
+                        }).catch(err => console.error("Sheets Backup Error:", err));
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'แก้ไขข้อมูลเรียบร้อยแล้ว',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                    }).catch((err) => {
+                        Swal.fire('เกิดข้อผิดพลาด', err.message, 'error');
+                    });
+                }
+            });
+        }
+
         // ฟังก์ชันยืนยันการลบข้อมูลประวัติด้วย User/Password แอดมิน
         function confirmDeleteRecord(id) {
+            if (db.isLoggedIn && db.currentUser) {
+                if (db.currentUser.canDeleteHistory === false) {
+                    Swal.fire('ไม่มีสิทธิ์', 'คุณไม่มีสิทธิ์ลบข้อมูลประวัติ', 'error');
+                    return;
+                }
+            }
+
             Swal.fire({
                 title: 'ยืนยันการลบข้อมูลประวัติ',
                 text: 'กรุณากรอก Username และ Password แอดมินเพื่ออนุมัติการลบ',
@@ -640,6 +841,10 @@
                     const admin = db.admins.find(x => x.user === u && x.pass === p);
                     if (!admin) {
                         Swal.showValidationMessage('Username หรือ Password แอดมินไม่ถูกต้อง!');
+                        return false;
+                    }
+                    if (admin.canDeleteHistory === false) {
+                        Swal.showValidationMessage('แอดมินท่านนี้ไม่มีสิทธิ์ลบประวัติ!');
                         return false;
                     }
                     return admin;
@@ -685,9 +890,12 @@
                         <td class="p-3.5 text-cyan-700 text-xs font-medium">${r.waterLevelStatus} (${r.waterLevelCM})</td>
                         <td class="p-3.5 text-gray-700 text-xs font-medium">${r.roadLevelStatus} (${r.roadLevelCM})</td>
                         <td class="p-3.5 text-emerald-700 text-xs font-medium">${r.floorLevelStatus} (${r.floorLevelCM})</td>
-                        <td class="p-3.5 text-center pr-4">
-                            <button onclick="viewDetails('${r.id}')" class="text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-8 h-8 rounded-lg border border-blue-200 text-xs inline-flex items-center justify-center transition shadow-xs">
+                        <td class="p-3.5 text-center pr-4 space-x-1">
+                            <button onclick="viewDetails('${r.id}')" class="text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-8 h-8 rounded-lg border border-blue-200 text-xs inline-flex items-center justify-center transition shadow-xs" title="ดูรายละเอียด">
                                 <i class="fa-solid fa-eye"></i>
+                            </button>
+                            <button onclick="editRecord('${r.id}')" class="text-amber-600 hover:bg-amber-50 hover:text-amber-700 w-8 h-8 rounded-lg border border-amber-200 text-xs inline-flex items-center justify-center transition shadow-xs" title="แก้ไขข้อมูลประวัติ">
+                                <i class="fa-solid fa-pen-to-square"></i>
                             </button>
                         </td>
                     </tr>
@@ -746,17 +954,24 @@
             document.getElementById('list-road').innerHTML = genHtml(db.roadStatus, 'roadStatus');
             document.getElementById('list-floor').innerHTML = genHtml(db.floorStatus, 'floorStatus');
             
-            document.getElementById('list-admins').innerHTML = db.admins.map((a, idx) => `
-                <tr class="hover:bg-gray-50">
-                    <td class="p-3">${a.user}</td>
-                    <td class="p-3">${a.name}</td>
-                    <td class="p-3 text-center space-x-2">
-                        <button onclick="viewAdmin(${idx})" class="text-blue-500 hover:bg-blue-100 p-1.5 rounded-full" title="ดูข้อมูล"><i class="fa-solid fa-eye"></i></button>
-                        <button onclick="editAdmin(${idx})" class="text-yellow-600 hover:bg-yellow-100 p-1.5 rounded-full" title="แก้ไข"><i class="fa-solid fa-pen"></i></button>
-                        <button onclick="deleteSetting('admins', ${idx})" class="text-red-500 hover:bg-red-100 p-1.5 rounded-full" title="ลบ"><i class="fa-solid fa-trash"></i></button>
-                    </td>
-                </tr>
-            `).join('');
+            document.getElementById('list-admins').innerHTML = db.admins.map((a, idx) => {
+                const editBadge = (a.canEditHistory !== false) ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 mr-1"><i class="fa-solid fa-pen-to-square"></i> แก้ไข</span>' : '';
+                const delBadge = (a.canDeleteHistory !== false) ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700"><i class="fa-solid fa-trash"></i> ลบ</span>' : '';
+                const noBadge = (!editBadge && !delBadge) ? '<span class="text-xs text-gray-400">ไม่มีสิทธิ์</span>' : '';
+
+                return `
+                    <tr class="hover:bg-gray-50">
+                        <td class="p-3 font-medium text-gray-800">${a.user}</td>
+                        <td class="p-3 text-gray-700">${a.name}</td>
+                        <td class="p-3 text-center">${editBadge}${delBadge}${noBadge}</td>
+                        <td class="p-3 text-center space-x-2">
+                            <button onclick="viewAdmin(${idx})" class="text-blue-500 hover:bg-blue-100 p-1.5 rounded-full" title="ดูข้อมูล"><i class="fa-solid fa-eye"></i></button>
+                            <button onclick="editAdmin(${idx})" class="text-yellow-600 hover:bg-yellow-100 p-1.5 rounded-full" title="แก้ไข"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="deleteSetting('admins', ${idx})" class="text-red-500 hover:bg-red-100 p-1.5 rounded-full" title="ลบ"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         function addSetting(type, inputId) {
@@ -826,6 +1041,17 @@
                         <div><label class="text-xs text-gray-500 font-semibold">รหัสพนักงาน</label><input id="swal-add-emp" class="w-full border p-2 rounded mt-1" placeholder="EMP002"></div>
                         <div><label class="text-xs text-gray-500 font-semibold">เบอร์โทรศัพท์</label><input id="swal-add-phone" class="w-full border p-2 rounded mt-1" placeholder="08XXXXXXXX"></div>
                         <div><label class="text-xs text-gray-500 font-semibold">ตำแหน่ง</label><input id="swal-add-pos" class="w-full border p-2 rounded mt-1" placeholder="ตำแหน่ง"></div>
+                        <div class="pt-2 border-t mt-3">
+                            <label class="text-xs text-gray-700 font-bold block mb-1.5">สิทธิ์การใช้งาน</label>
+                            <div class="flex items-center space-x-4">
+                                <label class="inline-flex items-center text-xs text-gray-600 cursor-pointer">
+                                    <input type="checkbox" id="swal-add-can-edit" checked class="w-4 h-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500 mr-1.5"> สิทธิ์แก้ไขประวัติ
+                                </label>
+                                <label class="inline-flex items-center text-xs text-gray-600 cursor-pointer">
+                                    <input type="checkbox" id="swal-add-can-del" checked class="w-4 h-4 rounded text-red-600 border-gray-300 focus:ring-red-500 mr-1.5"> สิทธิ์ลบประวัติ
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 `,
                 showCancelButton: true,
@@ -843,7 +1069,9 @@
                         user: user, pass: pass, name: name,
                         empId: document.getElementById('swal-add-emp').value.trim(),
                         phone: document.getElementById('swal-add-phone').value.trim(),
-                        position: document.getElementById('swal-add-pos').value.trim()
+                        position: document.getElementById('swal-add-pos').value.trim(),
+                        canEditHistory: document.getElementById('swal-add-can-edit').checked,
+                        canDeleteHistory: document.getElementById('swal-add-can-del').checked
                     };
                 }
             }).then(res => {
@@ -858,6 +1086,9 @@
 
         function viewAdmin(idx) {
             const a = db.admins[idx];
+            const canEditStr = (a.canEditHistory !== false) ? '<span class="text-emerald-600 font-bold"><i class="fa-solid fa-check"></i> มีสิทธิ์</span>' : '<span class="text-red-500 font-bold"><i class="fa-solid fa-xmark"></i> ไม่มีสิทธิ์</span>';
+            const canDelStr = (a.canDeleteHistory !== false) ? '<span class="text-emerald-600 font-bold"><i class="fa-solid fa-check"></i> มีสิทธิ์</span>' : '<span class="text-red-500 font-bold"><i class="fa-solid fa-xmark"></i> ไม่มีสิทธิ์</span>';
+
             Swal.fire({
                 title: 'ข้อมูลแอดมิน',
                 html: `
@@ -866,7 +1097,9 @@
                         <div class="flex justify-between border-b pb-2"><span class="text-gray-500">ชื่อ-สกุล</span><span class="font-bold">${a.name}</span></div>
                         <div class="flex justify-between border-b pb-2"><span class="text-gray-500">รหัสพนักงาน</span><span class="font-bold">${a.empId || '-'}</span></div>
                         <div class="flex justify-between border-b pb-2"><span class="text-gray-500">เบอร์โทรศัพท์</span><span class="font-bold">${a.phone || '-'}</span></div>
-                        <div class="flex justify-between"><span class="text-gray-500">ตำแหน่ง</span><span class="font-bold">${a.position || '-'}</span></div>
+                        <div class="flex justify-between border-b pb-2"><span class="text-gray-500">ตำแหน่ง</span><span class="font-bold">${a.position || '-'}</span></div>
+                        <div class="flex justify-between border-b pb-2"><span class="text-gray-500">สิทธิ์แก้ไขประวัติ</span>${canEditStr}</div>
+                        <div class="flex justify-between"><span class="text-gray-500">สิทธิ์ลบประวัติ</span>${canDelStr}</div>
                     </div>
                 `,
                 confirmButtonText: 'ปิด',
@@ -876,6 +1109,9 @@
 
         function editAdmin(idx) {
             const a = db.admins[idx];
+            const canEdit = a.canEditHistory !== false;
+            const canDel = a.canDeleteHistory !== false;
+
             Swal.fire({
                 title: 'แก้ไขแอดมิน',
                 html: `
@@ -900,6 +1136,17 @@
                         <div><label class="text-xs text-gray-500 font-semibold">รหัสพนักงาน</label><input id="swal-a-emp" class="w-full border p-2 rounded mt-1" value="${a.empId || ''}"></div>
                         <div><label class="text-xs text-gray-500 font-semibold">เบอร์โทรศัพท์</label><input id="swal-a-phone" class="w-full border p-2 rounded mt-1" value="${a.phone || ''}"></div>
                         <div><label class="text-xs text-gray-500 font-semibold">ตำแหน่ง</label><input id="swal-a-pos" class="w-full border p-2 rounded mt-1" value="${a.position || ''}"></div>
+                        <div class="pt-2 border-t mt-3">
+                            <label class="text-xs text-gray-700 font-bold block mb-1.5">สิทธิ์การใช้งาน</label>
+                            <div class="flex items-center space-x-4">
+                                <label class="inline-flex items-center text-xs text-gray-600 cursor-pointer">
+                                    <input type="checkbox" id="swal-a-can-edit" ${canEdit ? 'checked' : ''} class="w-4 h-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500 mr-1.5"> สิทธิ์แก้ไขประวัติ
+                                </label>
+                                <label class="inline-flex items-center text-xs text-gray-600 cursor-pointer">
+                                    <input type="checkbox" id="swal-a-can-del" ${canDel ? 'checked' : ''} class="w-4 h-4 rounded text-red-600 border-gray-300 focus:ring-red-500 mr-1.5"> สิทธิ์ลบประวัติ
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 `,
                 showCancelButton: true,
@@ -913,12 +1160,17 @@
                         name: document.getElementById('swal-a-name').value,
                         empId: document.getElementById('swal-a-emp').value,
                         phone: document.getElementById('swal-a-phone').value,
-                        position: document.getElementById('swal-a-pos').value
+                        position: document.getElementById('swal-a-pos').value,
+                        canEditHistory: document.getElementById('swal-a-can-edit').checked,
+                        canDeleteHistory: document.getElementById('swal-a-can-del').checked
                     }
                 }
             }).then(res => {
                 if(res.isConfirmed) {
                     db.admins[idx] = { ...a, ...res.value };
+                    if (db.currentUser && db.currentUser.user === a.user) {
+                        db.currentUser = { ...db.currentUser, ...res.value };
+                    }
                     renderSettingsLists();
                     saveSettingsToFirebaseAndSheets('admins');
                     Swal.fire('บันทึกสำเร็จ', '', 'success');
