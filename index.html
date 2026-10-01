@@ -113,7 +113,7 @@
 
                     <div class="mb-6">
                         <label class="block text-sm font-semibold text-gray-700 mb-1">รายละเอียดสถานการณ์</label>
-                        <textarea id="txtDetails" rows="4" required class="w-full bg-gray-50 border-gray-200 rounded-lg shadow-sm p-3 border focus:ring-2 focus:ring-blue-500 outline-none transition custom-scrollbar" placeholder="โปรดระบุสถานการณ์และผลกระทบ..."></textarea>
+                        <textarea id="txtDetails" rows="4" required class="w-full bg-gray-50 border-gray-200 rounded-lg shadow-sm p-3 border focus:ring-2 focus:ring-blue-500 outline-none transition custom-scrollbar" placeholder="โปรดระบุสถานะการณ์และผลกระทบ..."></textarea>
                     </div>
                     
                     <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-bold py-3.5 px-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 flex justify-center items-center transform hover:-translate-y-0.5">
@@ -129,7 +129,7 @@
             <!-- Main History View -->
             <div id="history-main-view" class="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-6 md:p-8 block">
                 
-                <!-- Section: เลือกดูประวัติรายสาขา (ปรับปรุงเป็น Dropdown List) -->
+                <!-- Section: เลือกดูประวัติรายสาขา -->
                 <div class="mb-8 p-5 bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-white rounded-2xl border border-indigo-100/80 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div class="flex items-center space-x-3.5">
                         <div class="w-11 h-11 bg-indigo-600 text-white rounded-xl shadow-md flex items-center justify-center shrink-0">
@@ -313,7 +313,12 @@
 
         const defaultSettings = {
             stores: ['สาขาสยาม', 'สาขาเซ็นทรัลเวิลด์', 'สาขาลาดพร้าว'],
-            statuses: ['ปกติ', 'เฝ้าระวัง', 'ฉุกเฉินระดับ 1'],
+            statuses: [
+                'Critical : สถานะวิกฤต (ปิดสาขา)',
+                'Hight Alert : สถานะเตือนภัย',
+                'Monitoring : สถานะเฝ้าระวัง',
+                'Recovery : สถานะฟื้นฟู'
+            ],
             waterStatus: ['ต่ำกว่าตลิ่ง', 'สูงกว่าตลิ่ง'],
             roadStatus: ['ต่ำกว่าถนน', 'สูงกว่าถนน'],
             floorStatus: ['ต่ำกว่าพื้นศูนย์ฯ', 'สูงกว่าพื้นศูนย์ฯ'],
@@ -345,7 +350,6 @@
                     db.floorStatus = data.floorStatus || [...defaultSettings.floorStatus];
                     db.admins = data.admins || [...defaultSettings.admins];
                 } else {
-                    // หากฐานข้อมูลสแตนบายเพิ่งสร้างใหม่ ให้สร้างข้อมูลเริ่มต้นบน Firebase
                     settingsRef.set(defaultSettings);
                 }
                 updateDropdowns();
@@ -371,12 +375,26 @@
             });
         };
 
+        // ฟังก์ชันคืนค่า class ของ Tailwind CSS ตามระดับสถานะ
+        function getStatusBadgeClass(status) {
+            if (!status) return 'bg-gray-100 text-gray-700 border-gray-200';
+            const str = status.toLowerCase();
+            if (str.includes('critical') || str.includes('วิกฤต')) {
+                return 'bg-red-100 text-red-700 border-red-200';
+            } else if (str.includes('hight alert') || str.includes('high alert') || str.includes('เตือนภัย')) {
+                return 'bg-orange-100 text-orange-700 border-orange-200';
+            } else if (str.includes('monitoring') || str.includes('เฝ้าระวัง')) {
+                return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+            } else if (str.includes('recovery') || str.includes('ฟื้นฟู')) {
+                return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+            }
+            return 'bg-gray-100 text-gray-700 border-gray-200';
+        }
+
         // บันทึกและซิงค์ข้อมูล Settings ขึ้นทั้ง Firebase และ Google Sheets
         function saveSettingsToFirebaseAndSheets(type) {
-            // บันทึกลง Firebase
             settingsRef.child(type).set(db[type]).catch(err => console.error("Firebase Settings Error:", err));
 
-            // บันทึกลง Google Sheets
             fetch(GOOGLE_SHEET_WEBAPP_URL, {
                 method: 'POST',
                 mode: 'no-cors',
@@ -443,7 +461,6 @@
                         wm.classList.add('inline-flex');
                     }
                     
-                    // ป๊อปอัพแสดงข้อความต้อนรับ
                     Swal.fire({
                         icon: 'success',
                         title: 'ยินดีต้อนรับเข้าสู่ระบบ',
@@ -497,11 +514,8 @@
                 details: document.getElementById('txtDetails').value,
             };
 
-            // 1. ส่งเข้า Firebase
             const newRecordRef = recordsRef.push();
             newRecordRef.set(record).then(() => {
-                
-                // 2. ส่ง Backup เข้า Google Sheets
                 fetch(GOOGLE_SHEET_WEBAPP_URL, {
                     method: 'POST',
                     mode: 'no-cors',
@@ -522,7 +536,6 @@
             });
         }
 
-        // --- History Store Dropdown ---
         function updateHistoryStoreDropdown() {
             const selectEl = document.getElementById('historyStoreSelect');
             if (!selectEl) return;
@@ -549,7 +562,7 @@
                 <tr class="hover:bg-indigo-50/30 transition-colors">
                     <td class="p-3.5 pl-4 font-semibold text-gray-700">${r.date}</td>
                     <td class="p-3.5 text-gray-700 font-medium">${r.store}</td>
-                    <td class="p-3.5 text-center"><span class="px-2.5 py-1 bg-gray-100 rounded-lg text-xs font-semibold text-gray-700 border border-gray-200">${r.status}</span></td>
+                    <td class="p-3.5 text-center"><span class="px-2.5 py-1 rounded-lg text-xs font-semibold border ${getStatusBadgeClass(r.status)}">${r.status}</span></td>
                     <td class="p-3.5 text-gray-700">${r.waterSource}</td>
                     <td class="p-3.5 text-cyan-700 text-xs font-medium">${r.waterLevelStatus} (${r.waterLevelCM})</td>
                     <td class="p-3.5 text-gray-700 text-xs font-medium">${r.roadLevelStatus} (${r.roadLevelCM})</td>
@@ -564,9 +577,15 @@
         }
 
         function buildDetailCardHTML(r) {
+            const badgeClass = getStatusBadgeClass(r.status);
             return `
                 <div class="text-left bg-white p-5 rounded-xl border border-gray-200 shadow-sm mb-4 relative hover:shadow-md transition">
-                    <div class="absolute top-4 right-4 bg-gray-100 px-3 py-1 rounded-full text-xs font-bold text-gray-600 border">${r.status}</div>
+                    <div class="absolute top-4 right-4 flex items-center space-x-2">
+                        <button onclick="confirmDeleteRecord('${r.id}')" class="text-red-500 hover:bg-red-50 p-1.5 rounded-lg border border-red-200 text-xs flex items-center justify-center transition shadow-xs" title="ลบข้อมูลประวัติ">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                        <div class="${badgeClass} px-3 py-1 rounded-full text-xs font-bold border">${r.status}</div>
+                    </div>
                     <div class="mb-4 pb-3 border-b border-gray-100 flex items-center">
                         <i class="fa-solid fa-clock text-gray-400 mr-2"></i>
                         <span class="font-semibold text-gray-700">${r.date}</span>
@@ -591,6 +610,56 @@
             if(r) Swal.fire({ title: 'รายละเอียดข้อมูล', html: buildDetailCardHTML(r), showCloseButton: true, width: '700px', showConfirmButton: false });
         }
 
+        // ฟังก์ชันยืนยันการลบข้อมูลประวัติด้วย User/Password แอดมิน
+        function confirmDeleteRecord(id) {
+            Swal.fire({
+                title: 'ยืนยันการลบข้อมูลประวัติ',
+                text: 'กรุณากรอก Username และ Password แอดมินเพื่ออนุมัติการลบ',
+                html: `
+                    <input id="swal-del-user" class="swal2-input" placeholder="Username แอดมิน" style="width: 80%;">
+                    <div style="position: relative; width: 80%; margin: 1em auto;">
+                        <input id="swal-del-pass" type="password" class="swal2-input" placeholder="Password แอดมิน" style="width: 100%; margin: 0; padding-right: 40px;">
+                        <button type="button" 
+                            onmousedown="const p = document.getElementById('swal-del-pass'); const i = this.querySelector('i'); p.type='text'; i.classList.replace('fa-eye', 'fa-eye-slash');" 
+                            onmouseup="const p = document.getElementById('swal-del-pass'); const i = this.querySelector('i'); p.type='password'; i.classList.replace('fa-eye-slash', 'fa-eye');" 
+                            onmouseleave="const p = document.getElementById('swal-del-pass'); const i = this.querySelector('i'); p.type='password'; i.classList.replace('fa-eye-slash', 'fa-eye');" 
+                            ontouchstart="const p = document.getElementById('swal-del-pass'); const i = this.querySelector('i'); p.type='text'; i.classList.replace('fa-eye', 'fa-eye-slash');" 
+                            ontouchend="const p = document.getElementById('swal-del-pass'); const i = this.querySelector('i'); p.type='password'; i.classList.replace('fa-eye-slash', 'fa-eye');" 
+                            style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #6b7280; padding: 5px; outline: none;">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'ลบข้อมูล',
+                cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#ef4444',
+                preConfirm: () => {
+                    const u = document.getElementById('swal-del-user').value;
+                    const p = document.getElementById('swal-del-pass').value;
+                    const admin = db.admins.find(x => x.user === u && x.pass === p);
+                    if (!admin) {
+                        Swal.showValidationMessage('Username หรือ Password แอดมินไม่ถูกต้อง!');
+                        return false;
+                    }
+                    return admin;
+                }
+            }).then((res) => {
+                if (res.isConfirmed) {
+                    recordsRef.child(id).remove().then(() => {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'ลบข้อมูลเรียบร้อยแล้ว',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                    }).catch((err) => {
+                        Swal.fire('เกิดข้อผิดพลาด', err.message, 'error');
+                    });
+                }
+            });
+        }
+
         function viewBranchHistory(storeName) {
             db.currentViewBranch = storeName;
             const selectEl = document.getElementById('historyStoreSelect');
@@ -611,7 +680,7 @@
                     <tr class="hover:bg-indigo-50/30 transition-colors">
                         <td class="p-3.5 pl-4 font-semibold text-gray-700">${r.date}</td>
                         <td class="p-3.5 text-gray-700 font-medium">${r.store}</td>
-                        <td class="p-3.5 text-center"><span class="px-2.5 py-1 bg-gray-100 rounded-lg text-xs font-semibold text-gray-700 border border-gray-200">${r.status}</span></td>
+                        <td class="p-3.5 text-center"><span class="px-2.5 py-1 rounded-lg text-xs font-semibold border ${getStatusBadgeClass(r.status)}">${r.status}</span></td>
                         <td class="p-3.5 text-gray-700">${r.waterSource}</td>
                         <td class="p-3.5 text-cyan-700 text-xs font-medium">${r.waterLevelStatus} (${r.waterLevelCM})</td>
                         <td class="p-3.5 text-gray-700 text-xs font-medium">${r.roadLevelStatus} (${r.roadLevelCM})</td>
