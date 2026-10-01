@@ -42,6 +42,7 @@
                         <i class="fa-solid fa-shield-halved text-2xl"></i>
                     </div>
                     <span class="font-bold text-xl text-gray-800">ระบบแจ้งเตือนระวังภัย</span>
+                    <span id="welcome-msg" class="hidden ml-4 text-sm font-medium text-blue-700 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-200 items-center"></span>
                 </div>
                 <nav class="flex space-x-2 sm:space-x-8">
                     <a href="#" onclick="switchTab('entry')" id="tab-entry" class="tab-active px-3 py-4 text-sm transition-all duration-200 flex items-center">
@@ -345,6 +346,7 @@
                     db.records.sort((a, b) => b.timestamp - a.timestamp); 
                 }
                 renderHistory();
+                renderStoreTags(); // เรียกอัปเดตสีป้ายสาขาทันทีเมื่อข้อมูลมา
                 
                 if(db.currentViewBranch) {
                     viewBranchHistory(db.currentViewBranch);
@@ -371,7 +373,15 @@
         }
 
         function switchTab(tabId) {
-            if (tabId !== 'settings' && db.isLoggedIn) { db.isLoggedIn = false; db.currentUser = null; }
+            if (tabId !== 'settings' && db.isLoggedIn) { 
+                db.isLoggedIn = false; 
+                db.currentUser = null; 
+                const wm = document.getElementById('welcome-msg');
+                if (wm) {
+                    wm.classList.add('hidden');
+                    wm.classList.remove('inline-flex');
+                }
+            }
             document.querySelectorAll('main > div').forEach(div => div.classList.add('hidden'));
             document.querySelectorAll('nav a').forEach(a => a.className = 'tab-inactive px-3 py-4 text-sm transition-all duration-200 flex items-center');
             document.getElementById(`page-${tabId}`).classList.remove('hidden');
@@ -383,7 +393,21 @@
             if (db.isLoggedIn) { switchTab(targetTab); return; }
             Swal.fire({
                 title: 'เข้าสู่ระบบ Admin',
-                html: `<input id="swal-user" class="swal2-input" placeholder="Username"><input id="swal-pass" type="password" class="swal2-input" placeholder="Password">`,
+                html: `
+                    <input id="swal-user" class="swal2-input" placeholder="Username" style="width: 80%;">
+                    <div style="position: relative; width: 80%; margin: 1em auto;">
+                        <input id="swal-pass" type="password" class="swal2-input" placeholder="Password" style="width: 100%; margin: 0; padding-right: 40px;">
+                        <button type="button" 
+                            onmousedown="const p = document.getElementById('swal-pass'); const i = this.querySelector('i'); p.type='text'; i.classList.replace('fa-eye', 'fa-eye-slash');" 
+                            onmouseup="const p = document.getElementById('swal-pass'); const i = this.querySelector('i'); p.type='password'; i.classList.replace('fa-eye-slash', 'fa-eye');" 
+                            onmouseleave="const p = document.getElementById('swal-pass'); const i = this.querySelector('i'); p.type='password'; i.classList.replace('fa-eye-slash', 'fa-eye');" 
+                            ontouchstart="const p = document.getElementById('swal-pass'); const i = this.querySelector('i'); p.type='text'; i.classList.replace('fa-eye', 'fa-eye-slash');" 
+                            ontouchend="const p = document.getElementById('swal-pass'); const i = this.querySelector('i'); p.type='password'; i.classList.replace('fa-eye-slash', 'fa-eye');" 
+                            style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #6b7280; padding: 5px; outline: none;">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                `,
                 showCancelButton: true, confirmButtonText: 'เข้าสู่ระบบ',
                 preConfirm: () => {
                     const u = document.getElementById('swal-user').value;
@@ -391,7 +415,29 @@
                     const a = db.admins.find(x => x.user === u && x.pass === p);
                     if (!a) Swal.showValidationMessage('รหัสผ่านไม่ถูกต้อง!'); return a;
                 }
-            }).then((res) => { if (res.isConfirmed) { db.isLoggedIn = true; db.currentUser = res.value; switchTab(targetTab); } });
+            }).then((res) => { 
+                if (res.isConfirmed) { 
+                    db.isLoggedIn = true; 
+                    db.currentUser = res.value; 
+                    const wm = document.getElementById('welcome-msg');
+                    if (wm) {
+                        wm.innerHTML = `<i class="fa-solid fa-user-check mr-1.5"></i> ยินดีต้อนรับคุณ: ${db.currentUser.name}`;
+                        wm.classList.remove('hidden');
+                        wm.classList.add('inline-flex');
+                    }
+                    
+                    // ป๊อปอัพแสดงข้อความต้อนรับ
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'ยินดีต้อนรับเข้าสู่ระบบ',
+                        text: db.currentUser.name,
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        switchTab(targetTab); 
+                    });
+                } 
+            });
         }
 
         function populateCMDropdowns() {
@@ -459,13 +505,41 @@
             });
         }
 
+        // ฟังก์ชันประมวลผลสีตามสถานะล่าสุด
+        function getStoreColorClass(storeName) {
+            const latestRecord = db.records.find(r => r.store === storeName);
+            if (!latestRecord) return 'border-indigo-100 hover:border-indigo-500 hover:bg-indigo-50 text-indigo-700'; // Default
+            
+            const status = latestRecord.status.toLowerCase();
+            
+            // จับคู่ตาม Keyword ที่กำหนด
+            if (status.includes('critical')) {
+                return 'border-red-300 hover:border-red-500 hover:bg-red-50 text-red-600';
+            } else if (status.includes('hight alert') || status.includes('high alert')) {
+                return 'border-orange-300 hover:border-orange-500 hover:bg-orange-50 text-orange-600';
+            } else if (status.includes('monitoring')) {
+                return 'border-yellow-400 hover:border-yellow-500 hover:bg-yellow-50 text-yellow-600';
+            } else if (status.includes('recovery')) {
+                return 'border-green-300 hover:border-green-500 hover:bg-green-50 text-green-600';
+            }
+            
+            // กรณีเป็นภาษาไทยหรือค่าพื้นฐาน (เผื่อไว้)
+            if (status.includes('ฉุกเฉิน')) return 'border-red-300 hover:border-red-500 hover:bg-red-50 text-red-600';
+            if (status.includes('เฝ้าระวัง')) return 'border-yellow-400 hover:border-yellow-500 hover:bg-yellow-50 text-yellow-600';
+            if (status.includes('ปกติ')) return 'border-green-300 hover:border-green-500 hover:bg-green-50 text-green-600';
+
+            return 'border-indigo-100 hover:border-indigo-500 hover:bg-indigo-50 text-indigo-700';
+        }
+
         // --- History ---
         function renderStoreTags() {
-            document.getElementById('store-tags-container').innerHTML = db.stores.map(s => `
-                <button onclick="viewBranchHistory('${s}')" class="bg-white border-2 border-indigo-100 hover:border-indigo-500 hover:bg-indigo-50 text-indigo-700 px-5 py-2.5 rounded-xl font-medium transition-all shadow-sm flex items-center transform hover:-translate-y-1">
+            document.getElementById('store-tags-container').innerHTML = db.stores.map(s => {
+                const colorClass = getStoreColorClass(s);
+                return `
+                <button onclick="viewBranchHistory('${s}')" class="bg-white border-2 ${colorClass} px-5 py-2.5 rounded-xl font-medium transition-all shadow-sm flex items-center transform hover:-translate-y-1">
                     <i class="fa-solid fa-store mr-2"></i> ${s}
                 </button>
-            `).join('');
+            `}).join('');
         }
 
         function renderHistory() {
@@ -653,7 +727,21 @@
                 html: `
                     <div class="space-y-3 text-left">
                         <div><label class="text-xs text-gray-500 font-semibold">Username</label><input id="swal-add-user" class="w-full border p-2 rounded mt-1" placeholder="admin2"></div>
-                        <div><label class="text-xs text-gray-500 font-semibold">Password</label><input id="swal-add-pass" type="password" class="w-full border p-2 rounded mt-1" placeholder="รหัสผ่าน"></div>
+                        <div>
+                            <label class="text-xs text-gray-500 font-semibold">Password</label>
+                            <div class="relative">
+                                <input id="swal-add-pass" type="password" class="w-full border p-2 rounded mt-1 pr-10" placeholder="รหัสผ่าน">
+                                <button type="button" 
+                                    onmousedown="const p = this.previousElementSibling; const i = this.querySelector('i'); p.type='text'; i.classList.replace('fa-eye', 'fa-eye-slash');" 
+                                    onmouseup="const p = this.previousElementSibling; const i = this.querySelector('i'); p.type='password'; i.classList.replace('fa-eye-slash', 'fa-eye');" 
+                                    onmouseleave="const p = this.previousElementSibling; const i = this.querySelector('i'); p.type='password'; i.classList.replace('fa-eye-slash', 'fa-eye');" 
+                                    ontouchstart="const p = this.previousElementSibling; const i = this.querySelector('i'); p.type='text'; i.classList.replace('fa-eye', 'fa-eye-slash');" 
+                                    ontouchend="const p = this.previousElementSibling; const i = this.querySelector('i'); p.type='password'; i.classList.replace('fa-eye-slash', 'fa-eye');" 
+                                    class="absolute inset-y-0 right-0 flex items-center pr-3 pt-1 text-gray-500 hover:text-gray-700 focus:outline-none">
+                                    <i class="fa-solid fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
                         <div><label class="text-xs text-gray-500 font-semibold">ชื่อ-สกุล</label><input id="swal-add-name" class="w-full border p-2 rounded mt-1" placeholder="ชื่อ-นามสกุล"></div>
                         <div><label class="text-xs text-gray-500 font-semibold">รหัสพนักงาน</label><input id="swal-add-emp" class="w-full border p-2 rounded mt-1" placeholder="EMP002"></div>
                         <div><label class="text-xs text-gray-500 font-semibold">เบอร์โทรศัพท์</label><input id="swal-add-phone" class="w-full border p-2 rounded mt-1" placeholder="08XXXXXXXX"></div>
@@ -713,7 +801,21 @@
                 html: `
                     <div class="space-y-3 text-left">
                         <div><label class="text-xs text-gray-500 font-semibold">Username</label><input id="swal-a-user" class="w-full border p-2 rounded mt-1" value="${a.user}"></div>
-                        <div><label class="text-xs text-gray-500 font-semibold">Password (เว้นว่างถ้าไม่ต้องการเปลี่ยน)</label><input id="swal-a-pass" type="password" class="w-full border p-2 rounded mt-1" placeholder="***"></div>
+                        <div>
+                            <label class="text-xs text-gray-500 font-semibold">Password (เว้นว่างถ้าไม่ต้องการเปลี่ยน)</label>
+                            <div class="relative">
+                                <input id="swal-a-pass" type="password" class="w-full border p-2 rounded mt-1 pr-10" placeholder="***">
+                                <button type="button" 
+                                    onmousedown="const p = this.previousElementSibling; const i = this.querySelector('i'); p.type='text'; i.classList.replace('fa-eye', 'fa-eye-slash');" 
+                                    onmouseup="const p = this.previousElementSibling; const i = this.querySelector('i'); p.type='password'; i.classList.replace('fa-eye-slash', 'fa-eye');" 
+                                    onmouseleave="const p = this.previousElementSibling; const i = this.querySelector('i'); p.type='password'; i.classList.replace('fa-eye-slash', 'fa-eye');" 
+                                    ontouchstart="const p = this.previousElementSibling; const i = this.querySelector('i'); p.type='text'; i.classList.replace('fa-eye', 'fa-eye-slash');" 
+                                    ontouchend="const p = this.previousElementSibling; const i = this.querySelector('i'); p.type='password'; i.classList.replace('fa-eye-slash', 'fa-eye');" 
+                                    class="absolute inset-y-0 right-0 flex items-center pr-3 pt-1 text-gray-500 hover:text-gray-700 focus:outline-none">
+                                    <i class="fa-solid fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
                         <div><label class="text-xs text-gray-500 font-semibold">ชื่อ-สกุล</label><input id="swal-a-name" class="w-full border p-2 rounded mt-1" value="${a.name}"></div>
                         <div><label class="text-xs text-gray-500 font-semibold">รหัสพนักงาน</label><input id="swal-a-emp" class="w-full border p-2 rounded mt-1" value="${a.empId || ''}"></div>
                         <div><label class="text-xs text-gray-500 font-semibold">เบอร์โทรศัพท์</label><input id="swal-a-phone" class="w-full border p-2 rounded mt-1" value="${a.phone || ''}"></div>
