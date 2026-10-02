@@ -22,6 +22,11 @@
         .tab-inactive { color: #6b7280; font-weight: 500; }
         .tab-inactive:hover { color: #3b82f6; border-bottom: 3px solid #bfdbfe; }
         
+        /* Mobile Tab Styles */
+        .mobile-tab-active { background-color: #eff6ff; color: #2563eb; font-weight: 600; }
+        .mobile-tab-inactive { color: #4b5563; font-weight: 500; }
+        .mobile-tab-inactive:hover { background-color: #f9fafb; color: #2563eb; }
+
         /* Custom Scrollbar */
         .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
@@ -38,13 +43,15 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16 items-center">
                 <div class="flex-shrink-0 flex items-center">
-                    <div class="bg-blue-600 text-white p-2 rounded-lg mr-3 shadow-md">
-                        <i class="fa-solid fa-shield-halved text-2xl"></i>
+                    <div class="bg-blue-600 text-white p-2 rounded-lg mr-2.5 sm:mr-3 shadow-md">
+                        <i class="fa-solid fa-shield-halved text-xl sm:text-2xl"></i>
                     </div>
-                    <span class="font-bold text-xl text-gray-800">ระบบแจ้งเตือนระวังภัย</span>
-                    <span id="welcome-msg" class="hidden ml-4 text-sm font-medium text-blue-700 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-200 items-center"></span>
+                    <span class="font-bold text-base sm:text-xl text-gray-800">ระบบแจ้งเตือนระวังภัย</span>
+                    <span id="welcome-msg" class="hidden ml-2 sm:ml-4 text-xs sm:text-sm font-medium text-blue-700 bg-blue-50 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full border border-blue-200 items-center"></span>
                 </div>
-                <nav class="flex space-x-2 sm:space-x-8">
+
+                <!-- Desktop Navigation (แสดงบน PC/แท็บเล็ตจอใหญ่) -->
+                <nav class="hidden md:flex space-x-2 sm:space-x-8">
                     <a href="#" onclick="switchTab('entry')" id="tab-entry" class="tab-active px-3 py-4 text-sm transition-all duration-200 flex items-center">
                         <i class="fa-solid fa-pen-to-square mr-2"></i> กรอกข้อมูล
                     </a>
@@ -55,7 +62,27 @@
                         <i class="fa-solid fa-gear mr-2"></i> ตั้งค่าระบบ
                     </a>
                 </nav>
+
+                <!-- Hamburger Button (แสดงเฉพาะบนมือถือ) -->
+                <div class="flex md:hidden items-center">
+                    <button type="button" onclick="toggleMobileMenu()" class="text-gray-600 hover:text-blue-600 focus:outline-none p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition" aria-label="Toggle Menu">
+                        <i class="fa-solid fa-bars text-xl"></i>
+                    </button>
+                </div>
             </div>
+        </div>
+
+        <!-- Mobile Navigation Menu Dropdown (ซ่อน/แสดงเมื่อกดปุ่ม 3 ขีด) -->
+        <div id="mobile-menu" class="hidden md:hidden border-t border-gray-100 bg-white px-4 pt-2 pb-4 space-y-1 shadow-lg">
+            <a href="#" onclick="switchTab('entry'); closeMobileMenu();" id="mobile-tab-entry" class="mobile-tab-active flex items-center px-3 py-2.5 rounded-lg text-sm transition-colors">
+                <i class="fa-solid fa-pen-to-square mr-2.5"></i> กรอกข้อมูล
+            </a>
+            <a href="#" onclick="switchTab('history'); closeMobileMenu();" id="mobile-tab-history" class="mobile-tab-inactive flex items-center px-3 py-2.5 rounded-lg text-sm transition-colors">
+                <i class="fa-solid fa-clock-rotate-left mr-2.5"></i> ประวัติการแจ้ง
+            </a>
+            <a href="#" onclick="requireLogin('settings'); closeMobileMenu();" id="mobile-tab-settings" class="mobile-tab-inactive flex items-center px-3 py-2.5 rounded-lg text-sm transition-colors">
+                <i class="fa-solid fa-gear mr-2.5"></i> ตั้งค่าระบบ
+            </a>
         </div>
     </header>
 
@@ -376,6 +403,20 @@
             });
         };
 
+        // สลับแสดง/ซ่อน เมนู 3 ขีดบนมือถือ
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            if (menu) menu.classList.toggle('hidden');
+        }
+
+        // ย่นพับเก็บเมนูบนมือถือลง
+        function closeMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            if (menu && !menu.classList.contains('hidden')) {
+                menu.classList.add('hidden');
+            }
+        }
+
         // ฟังก์ชันคืนค่า class ของ Tailwind CSS ตามระดับสถานะ
         function getStatusBadgeClass(status) {
             if (!status) return 'bg-gray-100 text-gray-700 border-gray-200';
@@ -419,13 +460,24 @@
                 }
             }
             document.querySelectorAll('main > div').forEach(div => div.classList.add('hidden'));
+            
+            // อัปเดตสถานะ Active ปุ่มแท็บทั้งบน PC และ Mobile
             document.querySelectorAll('nav a').forEach(a => a.className = 'tab-inactive px-3 py-4 text-sm transition-all duration-200 flex items-center');
+            const activeDesktopTab = document.getElementById(`tab-${tabId}`);
+            if (activeDesktopTab) activeDesktopTab.className = 'tab-active px-3 py-4 text-sm transition-all duration-200 flex items-center';
+
+            document.querySelectorAll('#mobile-menu a').forEach(a => a.className = 'mobile-tab-inactive flex items-center px-3 py-2.5 rounded-lg text-sm transition-colors');
+            const activeMobileTab = document.getElementById(`mobile-tab-${tabId}`);
+            if (activeMobileTab) activeMobileTab.className = 'mobile-tab-active flex items-center px-3 py-2.5 rounded-lg text-sm transition-colors';
+
             document.getElementById(`page-${tabId}`).classList.remove('hidden');
-            document.getElementById(`tab-${tabId}`).className = 'tab-active px-3 py-4 text-sm transition-all duration-200 flex items-center';
             if (tabId === 'history') closeBranchHistory();
+
+            closeMobileMenu(); // พับเมนูกลับตำแหน่งเดิม
         }
 
         function requireLogin(targetTab) {
+            closeMobileMenu(); // พับเมนูบนมือถือเมื่อเปิดป็อปอัปเข้าสู่ระบบ
             if (db.isLoggedIn) { switchTab(targetTab); return; }
             Swal.fire({
                 title: 'เข้าสู่ระบบ Admin',
