@@ -50,7 +50,7 @@
                     <span id="welcome-msg" class="hidden ml-2 sm:ml-4 text-xs sm:text-sm font-medium text-blue-700 bg-blue-50 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full border border-blue-200 items-center"></span>
                 </div>
 
-                <!-- Desktop Navigation (แสดงบน PC/แท็บเล็ตจอใหญ่) -->
+                <!-- Desktop Navigation -->
                 <nav class="hidden md:flex space-x-2 sm:space-x-8">
                     <a href="#" onclick="switchTab('entry')" id="tab-entry" class="tab-active px-3 py-4 text-sm transition-all duration-200 flex items-center">
                         <i class="fa-solid fa-pen-to-square mr-2"></i> กรอกข้อมูล
@@ -58,12 +58,15 @@
                     <a href="#" onclick="switchTab('history')" id="tab-history" class="tab-inactive px-3 py-4 text-sm transition-all duration-200 flex items-center">
                         <i class="fa-solid fa-clock-rotate-left mr-2"></i> ประวัติการแจ้ง
                     </a>
+                    <a href="#" onclick="switchTab('status')" id="tab-status" class="tab-inactive px-3 py-4 text-sm transition-all duration-200 flex items-center">
+                        <i class="fa-solid fa-chart-pie mr-2"></i> สถานะ
+                    </a>
                     <a href="#" onclick="requireLogin('settings')" id="tab-settings" class="tab-inactive px-3 py-4 text-sm transition-all duration-200 flex items-center">
                         <i class="fa-solid fa-gear mr-2"></i> ตั้งค่าระบบ
                     </a>
                 </nav>
 
-                <!-- Hamburger Button (แสดงเฉพาะบนมือถือ) -->
+                <!-- Hamburger Button (Mobile) -->
                 <div class="flex md:hidden items-center">
                     <button type="button" onclick="toggleMobileMenu()" class="text-gray-600 hover:text-blue-600 focus:outline-none p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition" aria-label="Toggle Menu">
                         <i class="fa-solid fa-bars text-xl"></i>
@@ -72,13 +75,16 @@
             </div>
         </div>
 
-        <!-- Mobile Navigation Menu Dropdown (ซ่อน/แสดงเมื่อกดปุ่ม 3 ขีด) -->
+        <!-- Mobile Navigation Menu Dropdown -->
         <div id="mobile-menu" class="hidden md:hidden border-t border-gray-100 bg-white px-4 pt-2 pb-4 space-y-1 shadow-lg">
             <a href="#" onclick="switchTab('entry'); closeMobileMenu();" id="mobile-tab-entry" class="mobile-tab-active flex items-center px-3 py-2.5 rounded-lg text-sm transition-colors">
                 <i class="fa-solid fa-pen-to-square mr-2.5"></i> กรอกข้อมูล
             </a>
             <a href="#" onclick="switchTab('history'); closeMobileMenu();" id="mobile-tab-history" class="mobile-tab-inactive flex items-center px-3 py-2.5 rounded-lg text-sm transition-colors">
                 <i class="fa-solid fa-clock-rotate-left mr-2.5"></i> ประวัติการแจ้ง
+            </a>
+            <a href="#" onclick="switchTab('status'); closeMobileMenu();" id="mobile-tab-status" class="mobile-tab-inactive flex items-center px-3 py-2.5 rounded-lg text-sm transition-colors">
+                <i class="fa-solid fa-chart-pie mr-2.5"></i> สถานะ
             </a>
             <a href="#" onclick="requireLogin('settings'); closeMobileMenu();" id="mobile-tab-settings" class="mobile-tab-inactive flex items-center px-3 py-2.5 rounded-lg text-sm transition-colors">
                 <i class="fa-solid fa-gear mr-2.5"></i> ตั้งค่าระบบ
@@ -255,8 +261,61 @@
             </div>
 
         </div>
+        
+        <!-- Page: 3. Status -->
+        <div id="page-status" class="hidden animate-fade-in w-full">
+            <!-- Main Status View (Icons) -->
+            <div id="status-main-view" class="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-6 md:p-8 block">
+                <div class="text-center mb-8">
+                    <h2 class="text-2xl font-bold text-gray-800"><i class="fa-solid fa-chart-pie text-blue-500 mr-2"></i>สถานะสาขาทั้งหมด</h2>
+                    <p class="text-gray-500 text-sm mt-1">แสดงสถานะล่าสุดของแต่ละสาขา (คลิกที่ไอคอนสาขาเพื่อดูประวัติการแจ้งเตือน)</p>
+                </div>
+                
+                <!-- Status Container -->
+                <div id="status-container" class="space-y-8">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
 
-        <!-- Page: 3. Settings (Admin) -->
+            <!-- Branch History View inside Status Page -->
+            <div id="status-branch-view" class="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-6 md:p-8 hidden">
+                <div class="flex justify-between items-center mb-6 pb-5 border-b border-gray-100 gap-4">
+                    <div class="flex items-center space-x-3">
+                        <button onclick="closeStatusBranchHistory()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3.5 py-2 rounded-xl font-medium transition flex items-center shadow-sm text-sm shrink-0">
+                            <i class="fa-solid fa-arrow-left mr-2"></i> ย้อนกลับ
+                        </button>
+                        <h2 id="status-branch-title" class="text-xl font-bold text-gray-800 flex items-center">
+                            <i class="fa-solid fa-store text-indigo-500 mr-2.5"></i> ประวัติสาขา
+                        </h2>
+                    </div>
+                    <button onclick="closeStatusBranchHistory()" class="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-xl transition flex items-center justify-center text-lg w-10 h-10" title="ปิด">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto rounded-xl border border-gray-100 custom-scrollbar">
+                    <table class="w-full text-left border-collapse whitespace-nowrap text-sm">
+                        <thead>
+                            <tr class="bg-slate-50 text-gray-700 border-b border-gray-200/80 font-bold text-xs uppercase tracking-wider">
+                                <th class="p-3.5 pl-4">วันที่และเวลา</th>
+                                <th class="p-3.5">สาขา</th>
+                                <th class="p-3.5 text-center">สถานะ</th>
+                                <th class="p-3.5">แหล่งน้ำเฝ้าระวัง</th>
+                                <th class="p-3.5">ระดับน้ำ</th>
+                                <th class="p-3.5">ระดับถนน</th>
+                                <th class="p-3.5">ชั้นเสมอพื้นฯ</th>
+                                <th class="p-3.5 text-center pr-4">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="statusBranchHistoryBody" class="divide-y divide-gray-100 bg-white">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Page: 4. Settings (Admin) -->
         <div id="page-settings" class="hidden">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <div class="bg-white rounded-2xl shadow-sm p-6 border-t-4 border-purple-500 flex flex-col">
@@ -333,8 +392,8 @@
         
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
-        const recordsRef = database.ref('reports'); // โหนดรายงานข้อมูล
-        const settingsRef = database.ref('settings'); // โหนดตั้งค่าระบบ
+        const recordsRef = database.ref('reports');
+        const settingsRef = database.ref('settings');
 
         const GOOGLE_SHEET_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzs-X3Z2owqYKB4x9kBX_C1Sx8ywy6VWnFl4hfhaz154vc4qSY5OXdMVr0H95j1mcHk/exec';
         // ==========================================
@@ -364,6 +423,8 @@
             isLoggedIn: false, currentUser: null, currentViewBranch: null
         };
 
+        let currentStatusBranch = null; // ตัวแปรเก็บสาขาที่เปิดดูในหน้าสถานะ
+
         window.onload = () => {
             populateCMDropdowns();
 
@@ -382,6 +443,7 @@
                 }
                 updateDropdowns();
                 renderSettingsLists();
+                renderStatusPage(); // อัปเดตหน้าสถานะ
             });
 
             // 2. ดึงและติดตามข้อมูล Reports จาก Firebase Realtime
@@ -396,20 +458,27 @@
                 }
                 renderHistory();
                 updateHistoryStoreDropdown();
+                renderStatusPage(); // อัปเดตหน้าสถานะ
                 
                 if(db.currentViewBranch) {
                     viewBranchHistory(db.currentViewBranch);
                 }
+                if(currentStatusBranch) {
+                    const storeRecords = db.records.filter(r => r.store === currentStatusBranch);
+                    if(storeRecords.length > 0) {
+                        showStatusBranchHistory(currentStatusBranch, storeRecords);
+                    } else {
+                        closeStatusBranchHistory();
+                    }
+                }
             });
         };
 
-        // สลับแสดง/ซ่อน เมนู 3 ขีดบนมือถือ
         function toggleMobileMenu() {
             const menu = document.getElementById('mobile-menu');
             if (menu) menu.classList.toggle('hidden');
         }
 
-        // ย่นพับเก็บเมนูบนมือถือลง
         function closeMobileMenu() {
             const menu = document.getElementById('mobile-menu');
             if (menu && !menu.classList.contains('hidden')) {
@@ -417,9 +486,8 @@
             }
         }
 
-        // ฟังก์ชันคืนค่า class ของ Tailwind CSS ตามระดับสถานะ
         function getStatusBadgeClass(status) {
-            if (!status) return 'bg-gray-100 text-gray-700 border-gray-200';
+            if (!status) return 'bg-blue-100 text-blue-700 border-blue-200';
             const str = status.toLowerCase();
             if (str.includes('critical') || str.includes('วิกฤต')) {
                 return 'bg-red-100 text-red-700 border-red-200';
@@ -430,10 +498,9 @@
             } else if (str.includes('recovery') || str.includes('ฟื้นฟู')) {
                 return 'bg-emerald-100 text-emerald-700 border-emerald-200';
             }
-            return 'bg-gray-100 text-gray-700 border-gray-200';
+            return 'bg-blue-100 text-blue-700 border-blue-200';
         }
 
-        // บันทึกและซิงค์ข้อมูล Settings ขึ้นทั้ง Firebase และ Google Sheets
         function saveSettingsToFirebaseAndSheets(type) {
             settingsRef.child(type).set(db[type]).catch(err => console.error("Firebase Settings Error:", err));
 
@@ -461,7 +528,6 @@
             }
             document.querySelectorAll('main > div').forEach(div => div.classList.add('hidden'));
             
-            // อัปเดตสถานะ Active ปุ่มแท็บทั้งบน PC และ Mobile
             document.querySelectorAll('nav a').forEach(a => a.className = 'tab-inactive px-3 py-4 text-sm transition-all duration-200 flex items-center');
             const activeDesktopTab = document.getElementById(`tab-${tabId}`);
             if (activeDesktopTab) activeDesktopTab.className = 'tab-active px-3 py-4 text-sm transition-all duration-200 flex items-center';
@@ -472,12 +538,13 @@
 
             document.getElementById(`page-${tabId}`).classList.remove('hidden');
             if (tabId === 'history') closeBranchHistory();
+            if (tabId === 'status') closeStatusBranchHistory();
 
-            closeMobileMenu(); // พับเมนูกลับตำแหน่งเดิม
+            closeMobileMenu();
         }
 
         function requireLogin(targetTab) {
-            closeMobileMenu(); // พับเมนูบนมือถือเมื่อเปิดป็อปอัปเข้าสู่ระบบ
+            closeMobileMenu();
             if (db.isLoggedIn) { switchTab(targetTab); return; }
             Swal.fire({
                 title: 'เข้าสู่ระบบ Admin',
@@ -589,6 +656,143 @@
             });
         }
 
+        // ==========================================
+        // ฟังก์ชันสำหรับหน้าสถานะ (Status Page)
+        // ==========================================
+        function renderStatusPage() {
+            const container = document.getElementById('status-container');
+            if (!container) return;
+
+            // 1. หารายการแจ้งเตือนล่าสุดของแต่ละสาขา
+            const latestStatusMap = {};
+            db.records.forEach(r => {
+                if (!latestStatusMap[r.store]) {
+                    latestStatusMap[r.store] = r.status;
+                }
+            });
+
+            // 2. กำหนดกลุ่มสาขา
+            const groups = {
+                'CDS_CE': { title: 'Central Department Store & Central Embassy', stores: [] },
+                'ROBINSON': { title: 'Robinson Department Store', stores: [] },
+                'LIFESTYLE': { title: 'Robinson Lifestyle', stores: [] },
+                'OTHER': { title: 'สาขาอื่นๆ', stores: [] }
+            };
+
+            // 3. จัดกลุ่มสาขาที่มีในตั้งค่าทั้งหมด
+            db.stores.forEach(store => {
+                const sName = store.toUpperCase();
+                const status = latestStatusMap[store] || null;
+                const storeData = { name: store, status: status };
+
+                if (sName.startsWith('CDS-') || sName.startsWith('CE-')) {
+                    groups.CDS_CE.stores.push(storeData);
+                } else if (sName.startsWith('RBS-LFS')) {
+                    groups.LIFESTYLE.stores.push(storeData);
+                } else if (sName.startsWith('RS-') || sName.startsWith('RBS-')) {
+                    groups.ROBINSON.stores.push(storeData);
+                } else {
+                    groups.OTHER.stores.push(storeData);
+                }
+            });
+
+            // 4. สร้าง HTML สำหรับแสดงผล
+            let html = '';
+            const order = ['CDS_CE', 'ROBINSON', 'LIFESTYLE', 'OTHER'];
+            
+            order.forEach(key => {
+                if (groups[key].stores.length === 0) return;
+                
+                const cardsHtml = groups[key].stores.map(s => {
+                    const styleClass = getStatusBadgeClass(s.status);
+                    const displayStatus = s.status ? s.status.split(':')[0].trim() : 'No Data';
+                    
+                    return `
+                        <div onclick="handleStatusBranchClick('${s.name}')" class="flex flex-col items-center justify-center p-4 rounded-xl border bg-white shadow-sm hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 cursor-pointer select-none group">
+                            <div class="w-16 h-16 rounded-full flex items-center justify-center border-2 mb-3 ${styleClass} group-hover:scale-105 transition-transform">
+                                <i class="fa-solid fa-store text-2xl"></i>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-800 text-center line-clamp-2 w-full leading-snug">${s.name}</span>
+                            <span class="text-[10px] px-2.5 py-1 mt-2.5 rounded-full font-bold border ${styleClass}">
+                                ${displayStatus}
+                            </span>
+                        </div>
+                    `;
+                }).join('');
+
+                html += `
+                    <div class="mb-8">
+                        <div class="flex items-center mb-5 border-b border-gray-100 pb-2">
+                            <h3 class="text-lg font-bold text-gray-700 border-l-4 border-blue-500 pl-3">${groups[key].title}</h3>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                            ${cardsHtml}
+                        </div>
+                    </div>
+                `;
+            });
+
+            if(html === '') {
+                html = '<div class="text-center py-10 text-gray-400">ยังไม่มีข้อมูลสาขาในระบบ กรุณาเพิ่มสาขาในหน้าตั้งค่า</div>';
+            }
+
+            container.innerHTML = html;
+        }
+
+        function handleStatusBranchClick(storeName) {
+            const storeRecords = db.records.filter(r => r.store === storeName);
+            if (storeRecords.length === 0) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'ไม่มีข้อมูลในระบบ',
+                    text: `สาขา ${storeName} ยังไม่มีประวัติการแจ้งเตือนในระบบ`,
+                    confirmButtonText: 'ตกลง',
+                    confirmButtonColor: '#3b82f6'
+                });
+            } else {
+                showStatusBranchHistory(storeName, storeRecords);
+            }
+        }
+
+        function showStatusBranchHistory(storeName, storeRecords) {
+            currentStatusBranch = storeName;
+            document.getElementById('status-main-view').classList.add('hidden');
+            document.getElementById('status-branch-view').classList.remove('hidden');
+
+            document.getElementById('status-branch-title').innerHTML = `<i class="fa-solid fa-store text-indigo-500 mr-2.5"></i> ประวัติสาขา: ${storeName}`;
+
+            const tbody = document.getElementById('statusBranchHistoryBody');
+            tbody.innerHTML = storeRecords.map(r => `
+                <tr class="hover:bg-indigo-50/30 transition-colors">
+                    <td class="p-3.5 pl-4 font-semibold text-gray-700">${r.date}</td>
+                    <td class="p-3.5 text-gray-700 font-medium">${r.store}</td>
+                    <td class="p-3.5 text-center"><span class="px-2.5 py-1 rounded-lg text-xs font-semibold border ${getStatusBadgeClass(r.status)}">${r.status}</span></td>
+                    <td class="p-3.5 text-gray-700">${r.waterSource}</td>
+                    <td class="p-3.5 text-cyan-700 text-xs font-medium">${r.waterLevelStatus} (${r.waterLevelCM})</td>
+                    <td class="p-3.5 text-gray-700 text-xs font-medium">${r.roadLevelStatus} (${r.roadLevelCM})</td>
+                    <td class="p-3.5 text-emerald-700 text-xs font-medium">${r.floorLevelStatus} (${r.floorLevelCM})</td>
+                    <td class="p-3.5 text-center pr-4 space-x-1">
+                        <button onclick="viewDetails('${r.id}')" class="text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-8 h-8 rounded-lg border border-blue-200 text-xs inline-flex items-center justify-center transition shadow-xs" title="ดูรายละเอียด">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                        <button onclick="editRecord('${r.id}')" class="text-amber-600 hover:bg-amber-50 hover:text-amber-700 w-8 h-8 rounded-lg border border-amber-200 text-xs inline-flex items-center justify-center transition shadow-xs" title="แก้ไขข้อมูลประวัติ">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function closeStatusBranchHistory() {
+            currentStatusBranch = null;
+            document.getElementById('status-branch-view').classList.add('hidden');
+            document.getElementById('status-main-view').classList.remove('hidden');
+        }
+
+        // ==========================================
+        // ฟังก์ชันอื่นๆ คงเดิมทั้งหมด
+        // ==========================================
+
         function updateHistoryStoreDropdown() {
             const selectEl = document.getElementById('historyStoreSelect');
             if (!selectEl) return;
@@ -669,7 +873,6 @@
             if(r) Swal.fire({ title: 'รายละเอียดข้อมูล', html: buildDetailCardHTML(r), showCloseButton: true, width: '700px', showConfirmButton: false });
         }
 
-        // ฟังก์ชันแก้ไขข้อมูลประวัติ
         function editRecord(id) {
             if (db.isLoggedIn && db.currentUser) {
                 if (db.currentUser.canEditHistory === false) {
@@ -722,7 +925,6 @@
             }
         }
 
-        // เปิดหน้าต่าง Modal ฟอร์มแก้ไขข้อมูลประวัติ
         function openEditRecordModal(id) {
             const r = db.records.find(x => x.id === id || x.id == id);
             if (!r) return;
@@ -856,7 +1058,6 @@
             });
         }
 
-        // ฟังก์ชันยืนยันการลบข้อมูลประวัติด้วย User/Password แอดมิน
         function confirmDeleteRecord(id) {
             if (db.isLoggedIn && db.currentUser) {
                 if (db.currentUser.canDeleteHistory === false) {
@@ -988,7 +1189,6 @@
             downloadCSV(records, `ประวัติ_${db.currentViewBranch}.csv`);
         }
 
-        // --- Settings Management ---
         function renderSettingsLists() {
             const genHtml = (arr, type) => arr.map((item, idx) => `
                 <li class="flex justify-between items-center bg-gray-50 border p-2 rounded-lg text-sm group transition hover:bg-gray-100">
@@ -1034,6 +1234,7 @@
                 renderSettingsLists(); 
                 updateDropdowns(); 
                 saveSettingsToFirebaseAndSheets(type);
+                if(type === 'stores') renderStatusPage();
             }
         }
 
@@ -1045,6 +1246,7 @@
                     renderSettingsLists(); 
                     updateDropdowns(); 
                     saveSettingsToFirebaseAndSheets(type);
+                    if(type === 'stores') renderStatusPage();
                 }
             });
         }
@@ -1063,11 +1265,11 @@
                     renderSettingsLists();
                     updateDropdowns();
                     saveSettingsToFirebaseAndSheets(type);
+                    if(type === 'stores') renderStatusPage();
                 }
             });
         }
 
-        // Admin Management
         function addAdmin() {
             Swal.fire({
                 title: 'เพิ่มแอดมินใหม่',
