@@ -190,9 +190,23 @@
                         </h2>
                         <p class="text-xs text-gray-400 mt-0.5">รายการประวัติสถานการณ์ภัยทั้งหมดที่ถูกบันทึกในระบบ</p>
                     </div>
-                    <button onclick="exportToExcel()" class="bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-600 hover:text-white px-4 py-2.5 rounded-xl shadow-sm flex items-center transition-all duration-200 font-medium text-xs sm:text-sm shrink-0">
-                        <i class="fa-solid fa-file-excel mr-2 text-base"></i> Export All
-                    </button>
+                    <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                        <!-- ตัวกรองรายเดือน -->
+                        <input type="month" id="monthFilter" onchange="renderHistory()" class="bg-white border border-gray-300 text-gray-700 text-xs sm:text-sm rounded-xl px-3 py-2 border shadow-sm outline-none focus:ring-2 focus:ring-blue-500 transition cursor-pointer" title="กรองตามเดือน">
+                        
+                        <!-- ตัวกรองจำนวนการแสดงผล -->
+                        <select id="limitFilter" onchange="renderHistory()" class="bg-white border border-gray-300 text-gray-700 text-xs sm:text-sm rounded-xl px-3 py-2 border shadow-sm outline-none focus:ring-2 focus:ring-blue-500 transition cursor-pointer">
+                            <option value="10">10 รายการ</option>
+                            <option value="30">30 รายการ</option>
+                            <option value="50">50 รายการ</option>
+                            <option value="100">100 รายการ</option>
+                            <option value="all" selected>แสดงทั้งหมด</option>
+                        </select>
+
+                        <button onclick="exportToExcel()" class="bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-600 hover:text-white px-4 py-2 rounded-xl shadow-sm flex items-center transition-all duration-200 font-medium text-xs sm:text-sm shrink-0">
+                            <i class="fa-solid fa-file-excel mr-2 text-base"></i> Export All
+                        </button>
+                    </div>
                 </div>
 
                 <div class="overflow-x-auto rounded-xl border border-gray-100 custom-scrollbar">
@@ -790,7 +804,7 @@
         }
 
         // ==========================================
-        // ฟังก์ชันอื่นๆ คงเดิมทั้งหมด
+        // ฟังก์ชันอื่นๆ
         // ==========================================
 
         function updateHistoryStoreDropdown() {
@@ -810,12 +824,34 @@
             const tbody = document.getElementById('historyBody');
             if (!tbody) return;
             
-            if (db.records.length === 0) {
+            let recordsToDisplay = [...db.records];
+
+            // 1. กรองข้อมูลตามเดือนที่เลือก
+            const monthInput = document.getElementById('monthFilter');
+            if (monthInput && monthInput.value) {
+                const [year, month] = monthInput.value.split('-').map(Number);
+                recordsToDisplay = recordsToDisplay.filter(r => {
+                    if (r.timestamp) {
+                        const d = new Date(r.timestamp);
+                        return d.getFullYear() === year && (d.getMonth() + 1) === month;
+                    }
+                    return true;
+                });
+            }
+
+            // 2. กรองข้อมูลตามจำนวนการแสดงผลที่เลือก
+            const limitSelect = document.getElementById('limitFilter');
+            if (limitSelect && limitSelect.value !== 'all') {
+                const limit = parseInt(limitSelect.value, 10);
+                recordsToDisplay = recordsToDisplay.slice(0, limit);
+            }
+
+            if (recordsToDisplay.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="8" class="text-center py-12 text-gray-400 bg-gray-50/50"><i class="fa-solid fa-inbox text-4xl mb-3 text-gray-300 block"></i>ยังไม่มีประวัติการส่งข้อมูลในระบบ</td></tr>`;
                 return;
             }
 
-            tbody.innerHTML = db.records.map(r => `
+            tbody.innerHTML = recordsToDisplay.map(r => `
                 <tr class="hover:bg-indigo-50/30 transition-colors">
                     <td class="p-3.5 pl-4 font-semibold text-gray-700">${r.date}</td>
                     <td class="p-3.5 text-gray-700 font-medium">${r.store}</td>
